@@ -54,11 +54,59 @@ class Instructor(db.Model):
 
 
 # Schemas
+class StudentSchema(ma.Schema):
+    class Meta:
+        fields = ('id', 'first_name', 'last_name', 'year', 'gpa')
 
+student_schema = StudentSchema()
+students_schema = StudentSchema(many=True)
+
+class StudentNameSchema(ma.Schema):
+    def get(self):
+        custom_response = {}
+
+        students = Student.query.all()
+        for item in students:
+            students = Student.query.filter(Student.id.has(id=item.id))
+
+            custom_response[item.name] = {
+                'first_name': item.first_name,
+                'last_name': item.last_name,
+                'students': students_schema.dump(students)
+            }
+        return custom_response, 200
 
 # Resources
+class StudentListResource(Resource):
+    def get(self):
+        order = request.args.get('order')
+        query = Student.query
+        if order:
+            query = query.order_by(order)
+        students = query.all()
+        return students_schema.dump(students)
 
+class FullCourseDetailResource(Resource):
+    def get(self, course_details_id):
+        custom_response = {}
+        course_details_id = Course.query.all()
+        for item in  course_details_id:
+            course_details_id = Course.query.filter(Course.id.has(id=item.id))
+            custom_response[item.name] = {
+                'course_name': item.course_details_id,
+                'instructor_name': item.instructor.relationship,
+                'student_info': {
+                'number_of_students': (len(course_details_id)),
+                'students':[
+                    {
+                    StudentNameSchema()
+                    }
+                ]
+                },
+                'course_details_id': students_schema.dump(course_details_id)
+            }
+        return custom_response, 200
 
 # Routes
-
-
+api.add_resource(StudentListResource, '/api/students')
+api.add_resource(FullCourseDetailResource, '/api/course_details/<int:course_details_id>')
